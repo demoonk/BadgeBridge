@@ -30,17 +30,19 @@ import java.util.Set;
  */
 public final class Store {
 
-    /* Геометрия снята с системных бейджей OriginOS (замер по скриншоту):
-       иконка 206 px, бейдж Ø72 px = 35% иконки, центр круга — точно на
-       верхнем-правом углу иконки, то есть половина круга выступает наружу.
-       Здесь: canvas 224, иконка 168, бейдж Ø56 (33%), центр на углу. */
+    /* Композиция «иконка + бейдж» целиком вписывается в ячейку виджета,
+       поэтому SIZE = ICON + BADGE_R: выступ бейджа равен его радиусу.
+       Замер системных значков OriginOS: иконка 206 px, бейдж Ø72 px,
+       выступ 36 px -> иконка занимает 85% композиции.
+       Здесь иконка = 174/200 = 87% ячейки (как было до 0.4.3),
+       бейдж Ø52 сидит на углу иконки и наполовину выступает наружу. */
     private static final int SIZE = 200;
-    private static final int ICON = 166;          // иконка: x 0..166, y 34..200
-    private static final int ICON_TOP = 34;
-    private static final int RADIUS = 48;
-    private static final float BADGE_R = 30.0f;   // Ø60 = 36% иконки, как в OriginOS
-    private static final float BADGE_X = ICON;    // 166 — правый край иконки
-    private static final float BADGE_Y = ICON_TOP; // 34 — верхний край иконки
+    private static final int ICON = 174;          // иконка: x 0..174, y 26..200
+    private static final int ICON_TOP = 26;
+    private static final int RADIUS = 50;
+    private static final float BADGE_R = 26.0f;   // Ø52 в холсте -> ~65 px на экране
+    private static final float BADGE_X = ICON;    // 174 — правый край иконки
+    private static final float BADGE_Y = ICON_TOP; // 26 — верхний край иконки
     private static final int BADGE_COLOR = Color.rgb(245, 74, 42);
     private static final int FALLBACK_BG = Color.rgb(45, 65, 85);
     private static final int WHITE = 0xFFFFFFFF;
@@ -139,7 +141,7 @@ public final class Store {
             canvas.drawCircle(BADGE_X, BADGE_Y, BADGE_R, badge);
             if (count > 0) {
                 String text = count > 99 ? "99+" : String.valueOf(count);
-                float size = text.length() == 1 ? 36.0f : (text.length() == 2 ? 29.0f : 23.0f);
+                float size = text.length() == 1 ? 30.0f : (text.length() == 2 ? 24.0f : 19.0f);
                 badge.setColor(WHITE);
                 badge.setTextSize(size);
                 badge.setTextAlign(Paint.Align.CENTER);
