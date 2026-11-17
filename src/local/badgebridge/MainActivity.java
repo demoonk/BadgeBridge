@@ -136,13 +136,58 @@ public class MainActivity extends Activity {
     }
 
     private Button button(String value, Runnable action) {
+        return button(value, action, ACCENT);
+    }
+
+    private Button button(String value, Runnable action, int color) {
         Button button = new Button(this);
         button.setText(value);
         button.setAllCaps(false);
         button.setTextColor(BG);
-        button.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
+        button.setBackgroundTintList(ColorStateList.valueOf(color));
         button.setOnClickListener(v -> action.run());
         return button;
+    }
+
+    /**
+     * Карточка обновлений — в самом верху экрана. Проверка выполняется
+     * каждый раз при открытии приложения (onResume).
+     */
+    private void renderUpdateCard() {
+        String current = Updater.currentVersion(this);
+        boolean newer = !latestVersion.isEmpty() && Updater.compare(latestVersion, current) > 0;
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(newer ? Color.rgb(44, 33, 29) : CARD);
+        background.setCornerRadius(dp(20));
+
+        LinearLayout update = new LinearLayout(this);
+        update.setOrientation(LinearLayout.VERTICAL);
+        update.setPadding(dp(18), dp(14), dp(18), dp(14));
+        update.setBackground(background);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(16);
+        root.addView(update, params);
+
+        if (newer) {
+            update.addView(text("Есть обновление — " + latestVersion, 18, Color.rgb(255, 184, 150)));
+            update.addView(text("У вас " + current + ". Скачаем APK с GitHub и откроем установщик, "
+                    + "vivo попросит подтвердить.", 13, MUTED));
+            update.addView(button("Обновиться до " + latestVersion, this::updateNow,
+                    Color.rgb(245, 110, 80)));
+            if (!updateStatus.isEmpty()) {
+                update.addView(text(updateStatus, 12, MUTED));
+            }
+        } else {
+            update.addView(text(latestVersion.isEmpty()
+                    ? (updateNote.isEmpty() ? "Проверяю обновления на GitHub…" : updateNote)
+                    : "Версия " + current + " — последняя на GitHub", 13, MUTED));
+            TextView recheck = text("Проверить снова", 13, ACCENT);
+            recheck.setPadding(dp(4), dp(10), dp(10), dp(10));
+            recheck.setOnClickListener(v -> checkUpdates());
+            update.addView(recheck);
+        }
     }
 
     private void render() {
@@ -171,6 +216,8 @@ public class MainActivity extends Activity {
 
         root.addView(text("Отдельный значок для каждого приложения: на нём написано число "
                 + "уведомлений. Нажатие открывает приложение.", 16, MUTED));
+
+        renderUpdateCard();
 
         LinearLayout status = card();
         boolean connected = Store.connected(this);
@@ -235,28 +282,6 @@ public class MainActivity extends Activity {
         }
 
         root.addView(button("+ Добавить приложение", this::pick));
-
-        LinearLayout update = card();
-        String current = Updater.currentVersion(this);
-        update.addView(text("Обновления", 18, INK));
-        if (latestVersion.isEmpty()) {
-            update.addView(text(updateNote.isEmpty()
-                    ? "Проверяю GitHub…" : updateNote, 13, MUTED));
-        } else if (Updater.compare(latestVersion, current) > 0) {
-            update.addView(text("Доступна версия " + latestVersion, 17, ACCENT));
-            update.addView(text("У вас " + current + ". Приложение скачает APK с GitHub "
-                    + "и откроет установщик — vivo попросит подтвердить установку.", 13, MUTED));
-            update.addView(button("Обновиться до " + latestVersion, this::updateNow));
-        } else {
-            update.addView(text("Версия " + current + " — последняя на GitHub", 14, MUTED));
-        }
-        if (!updateStatus.isEmpty()) {
-            update.addView(text(updateStatus, 12, MUTED));
-        }
-        TextView recheck = text("Проверить снова", 13, ACCENT);
-        recheck.setPadding(dp(4), dp(10), dp(10), dp(10));
-        recheck.setOnClickListener(v -> checkUpdates());
-        update.addView(recheck);
 
         root.addView(text("Как пользоваться", 18, INK));
         root.addView(text("1. Разрешите доступ к уведомлениям.\n"
