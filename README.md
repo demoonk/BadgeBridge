@@ -41,7 +41,7 @@ Android не даёт обычному приложению менять ико�
 
 ## Установка
 
-Скачайте APK из [releases](https://github.com/demonk/BadgeBridge/releases) и
+Скачайте APK из [releases](https://github.com/demoonk/BadgeBridge/releases) и
 установите как обычный APK.
 
 Дальше:
