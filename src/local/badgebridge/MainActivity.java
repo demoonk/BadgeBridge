@@ -42,6 +42,13 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String stateKey = "";
 
+    /** Результат проверки релизов на GitHub. */
+    private String latestVersion = "";
+    private String latestUrl = "";
+    private String updateNote = "";
+    private String updateStatus = "";
+    private boolean checkingUpdates = false;
+
     /** Само-обновляющийся таймер: перерисовываем, если изменились счётчики. */
     private final Runnable redraw = new Runnable() {
         @Override
@@ -78,6 +85,7 @@ public class MainActivity extends Activity {
         Store.refresh(this);
         render();
         handler.postDelayed(redraw, 2000L);
+        checkUpdates();
     }
 
     @Override
@@ -228,6 +236,28 @@ public class MainActivity extends Activity {
 
         root.addView(button("+ Добавить приложение", this::pick));
 
+        LinearLayout update = card();
+        String current = Updater.currentVersion(this);
+        update.addView(text("Обновления", 18, INK));
+        if (latestVersion.isEmpty()) {
+            update.addView(text(updateNote.isEmpty()
+                    ? "Проверяю GitHub…" : updateNote, 13, MUTED));
+        } else if (Updater.compare(latestVersion, current) > 0) {
+            update.addView(text("Доступна версия " + latestVersion, 17, ACCENT));
+            update.addView(text("У вас " + current + ". Приложение скачает APK с GitHub "
+                    + "и откроет установщик — vivo попросит подтвердить установку.", 13, MUTED));
+            update.addView(button("Обновиться до " + latestVersion, this::updateNow));
+        } else {
+            update.addView(text("Версия " + current + " — последняя на GitHub", 14, MUTED));
+        }
+        if (!updateStatus.isEmpty()) {
+            update.addView(text(updateStatus, 12, MUTED));
+        }
+        TextView recheck = text("Проверить снова", 13, ACCENT);
+        recheck.setPadding(dp(4), dp(10), dp(10), dp(10));
+        recheck.setOnClickListener(v -> checkUpdates());
+        update.addView(recheck);
+
         root.addView(text("Как пользоваться", 18, INK));
         root.addView(text("1. Разрешите доступ к уведомлениям.\n"
                 + "2. Добавьте значок выбранного приложения на экран.\n"
@@ -235,6 +265,56 @@ public class MainActivity extends Activity {
                 + "Это виджеты 1×1: приложение можно менять долгим нажатием → Настроить. "
                 + "Цифра на значке — число видимых уведомлений прямо сейчас. Постоянные служебные "
                 + "уведомления не учитываются. При запрете доступа цифра исчезает.", 13, MUTED));
+    }
+
+    /** Проверка последнего релиза. Делается при открытии приложения. */
+    private void checkUpdates() {
+        if (checkingUpdates) return;
+        checkingUpdates = true;
+        new Thread(() -> {
+            Updater.Release release = Updater.latest();
+            checkingUpdates = false;
+            handler.post(() -> {
+                if (release == null) {
+                    updateNote = "Не удалось связаться с GitHub — проверьте интернет";
+                    latestVersion = "";
+                    latestUrl = "";
+                } else {
+                    latestVersion = release.version;
+                    latestUrl = release.url;
+                    updateNote = "";
+                }
+                render();
+            });
+        }).start();
+    }
+
+    /** Скачиваем APK и открываем системный установщик. */
+    private void updateNow() {
+        if (latestUrl.isEmpty()) {
+            Toast.makeText(this, "Сначала проверьте обновления", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        handler.removeCallbacks(redraw);
+        new Thread(() -> {
+            java.io.File apk = Updater.download(this, latestUrl);
+            handler.post(() -> {
+                if (apk == null) {
+                    updateStatus = "Скачивание не удалось — проверьте интернет";
+                    Toast.makeText(this, updateStatus, Toast.LENGTH_LONG).show();
+                    render();
+                    handler.postDelayed(redraw, 2000L);
+                    return;
+                }
+                String result = Updater.install(this, apk);
+                updateStatus = result == "ok"
+                        ? "Скачан APK " + apk.length() + " Б, открыт установщик"
+                        : "Скачан " + apk.length() + " Б, но: " + result;
+                Toast.makeText(this, updateStatus, Toast.LENGTH_LONG).show();
+                render();
+                handler.postDelayed(redraw, 2000L);
+            });
+        }).start();
     }
 
     private void confirmRemove(final String pkg) {
