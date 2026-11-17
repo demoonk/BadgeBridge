@@ -30,13 +30,18 @@ import java.util.Set;
  */
 public final class Store {
 
-    private static final int SIZE = 192;
-    private static final int INSET = 12;
-    private static final int RADIUS = 36;
-    private static final float BADGE_X = 152.0f;
-    private static final float BADGE_Y = 32.0f;
-    private static final float BADGE_R = 24.0f;
-    private static final int BADGE_COLOR = Color.rgb(255, 65, 100);
+    /* Геометрия снята с системных бейджей OriginOS (замер по скриншоту):
+       иконка 206 px, бейдж Ø72 px = 35% иконки, центр круга — точно на
+       верхнем-правом углу иконки, то есть половина круга выступает наружу.
+       Здесь: canvas 224, иконка 168, бейдж Ø56 (33%), центр на углу. */
+    private static final int SIZE = 200;
+    private static final int ICON = 166;          // иконка: x 0..166, y 34..200
+    private static final int ICON_TOP = 34;
+    private static final int RADIUS = 48;
+    private static final float BADGE_R = 30.0f;   // Ø60 = 36% иконки, как в OriginOS
+    private static final float BADGE_X = ICON;    // 166 — правый край иконки
+    private static final float BADGE_Y = ICON_TOP; // 34 — верхний край иконки
+    private static final int BADGE_COLOR = Color.rgb(245, 74, 42);
     private static final int FALLBACK_BG = Color.rgb(45, 65, 85);
     private static final int WHITE = 0xFFFFFFFF;
 
@@ -113,19 +118,19 @@ public final class Store {
             Drawable icon = context.getPackageManager().getApplicationIcon(pkg);
             canvas.save();
             Path clip = new Path();
-            clip.addRoundRect(INSET, INSET, SIZE - INSET, SIZE - INSET, RADIUS, RADIUS, Path.Direction.CW);
+            clip.addRoundRect(0, ICON_TOP, ICON, SIZE, RADIUS, RADIUS, Path.Direction.CW);
             canvas.clipPath(clip);
-            icon.setBounds(INSET, INSET, SIZE - INSET, SIZE - INSET);
+            icon.setBounds(0, ICON_TOP, ICON, SIZE);
             icon.draw(canvas);
             canvas.restore();
         } catch (Exception e) {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setColor(FALLBACK_BG);
-            canvas.drawRoundRect(INSET, INSET, SIZE - INSET, SIZE - INSET, RADIUS, RADIUS, paint);
+            canvas.drawRoundRect(0, ICON_TOP, ICON, SIZE, RADIUS, RADIUS, paint);
             paint.setColor(WHITE);
             paint.setTextSize(72.0f);
             paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("+", SIZE / 2.0f, 121.0f, paint);
+            canvas.drawText("+", ICON / 2.0f, ICON_TOP + ICON / 2.0f + 25.0f, paint);
         }
 
         if (count > 0 || flag) {
@@ -133,11 +138,11 @@ public final class Store {
             badge.setColor(BADGE_COLOR);
             canvas.drawCircle(BADGE_X, BADGE_Y, BADGE_R, badge);
             if (count > 0) {
-                float size = count >= 10 ? 22.0f : 28.0f;
+                String text = count > 99 ? "99+" : String.valueOf(count);
+                float size = text.length() == 1 ? 36.0f : (text.length() == 2 ? 29.0f : 23.0f);
                 badge.setColor(WHITE);
                 badge.setTextSize(size);
                 badge.setTextAlign(Paint.Align.CENTER);
-                String text = count > 99 ? "99+" : String.valueOf(count);
                 canvas.drawText(text, BADGE_X, BADGE_Y + size * 0.36f, badge);
             }
         }
