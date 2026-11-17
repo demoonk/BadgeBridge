@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blank_widget_label">" "</string>
+    <string name="widget_description">Значок приложения с числом уведомлений</string>
+    <string name="widget_name">Значок с числом</string>
+</resources>
