@@ -34,8 +34,8 @@ foreach ($f in @($aapt2, $zipalign, $apksigner, $d8, $Platform)) {
     if (-not (Test-Path $f)) { throw "Не найдено: $f" }
 }
 
-$versionCode = 8
-$versionName = "0.4.4"
+$versionCode = 9
+$versionName = "0.4.5"
 
 New-Item -ItemType Directory -Force -Path "build", "dist" | Out-Null
 

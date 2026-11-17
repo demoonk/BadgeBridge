@@ -30,19 +30,21 @@ import java.util.Set;
  */
 public final class Store {
 
-    /* Композиция «иконка + бейдж» целиком вписывается в ячейку виджета,
-       поэтому SIZE = ICON + BADGE_R: выступ бейджа равен его радиусу.
-       Замер системных значков OriginOS: иконка 206 px, бейдж Ø72 px,
-       выступ 36 px -> иконка занимает 85% композиции.
-       Здесь иконка = 174/200 = 87% ячейки (как было до 0.4.3),
-       бейдж Ø52 сидит на углу иконки и наполовину выступает наружу. */
+    /* Композиция «иконка + бейдж» целиком вписывается в ячейку виджета.
+       Иконка центрирована в холсте (одинаковый отступ со всех сторон),
+       поэтому она стоит ровно по центру ячейки и совпадает с подписью,
+       а бейдж выступает за её угол ровно на MARGIN.
+       Системный значок OriginOS: иконка 206 px, бейдж Ø72 px на углу.
+       Здесь: иконка 174/200 = 87% ячейки (222 px), бейдж Ø50 (63 px). */
     private static final int SIZE = 200;
-    private static final int ICON = 174;          // иконка: x 0..174, y 26..200
-    private static final int ICON_TOP = 26;
+    private static final int MARGIN = 13;         // отступ иконки от края холста
+    private static final int ICON = 174;          // иконка: x 13..187, y 13..187
+    private static final int ICON_LEFT = MARGIN;
+    private static final int ICON_TOP = MARGIN;
     private static final int RADIUS = 50;
-    private static final float BADGE_R = 26.0f;   // Ø52 в холсте -> ~65 px на экране
-    private static final float BADGE_X = ICON;    // 174 — правый край иконки
-    private static final float BADGE_Y = ICON_TOP; // 26 — верхний край иконки
+    private static final float BADGE_R = 25.0f;   // Ø50 -> ~63 px на экране
+    private static final float BADGE_X = SIZE - BADGE_R; // 175
+    private static final float BADGE_Y = BADGE_R;        // 25
     private static final int BADGE_COLOR = Color.rgb(245, 74, 42);
     private static final int FALLBACK_BG = Color.rgb(45, 65, 85);
     private static final int WHITE = 0xFFFFFFFF;
@@ -120,19 +122,21 @@ public final class Store {
             Drawable icon = context.getPackageManager().getApplicationIcon(pkg);
             canvas.save();
             Path clip = new Path();
-            clip.addRoundRect(0, ICON_TOP, ICON, SIZE, RADIUS, RADIUS, Path.Direction.CW);
+            clip.addRoundRect(ICON_LEFT, ICON_TOP, ICON_LEFT + ICON, ICON_TOP + ICON,
+                    RADIUS, RADIUS, Path.Direction.CW);
             canvas.clipPath(clip);
-            icon.setBounds(0, ICON_TOP, ICON, SIZE);
+            icon.setBounds(ICON_LEFT, ICON_TOP, ICON_LEFT + ICON, ICON_TOP + ICON);
             icon.draw(canvas);
             canvas.restore();
         } catch (Exception e) {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setColor(FALLBACK_BG);
-            canvas.drawRoundRect(0, ICON_TOP, ICON, SIZE, RADIUS, RADIUS, paint);
+            canvas.drawRoundRect(ICON_LEFT, ICON_TOP, ICON_LEFT + ICON, ICON_TOP + ICON,
+                    RADIUS, RADIUS, paint);
             paint.setColor(WHITE);
             paint.setTextSize(72.0f);
             paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("+", ICON / 2.0f, ICON_TOP + ICON / 2.0f + 25.0f, paint);
+            canvas.drawText("+", ICON_LEFT + ICON / 2.0f, ICON_TOP + ICON / 2.0f + 25.0f, paint);
         }
 
         if (count > 0 || flag) {
