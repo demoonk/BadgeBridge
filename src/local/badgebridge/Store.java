@@ -2,6 +2,7 @@ package local.badgebridge;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -89,6 +90,50 @@ public final class Store {
     /** Число видимых уведомлений выбранного приложения прямо сейчас. */
     static int count(Context context, String pkg) {
         return connected(context) ? prefs(context).getInt("count:" + pkg, 0) : 0;
+    }
+
+    /** Когда последний раз считали ленту уведомлений. */
+    static String checkedText(Context context) {
+        long updated = prefs(context).getLong("updated", 0L);
+        if (updated == 0L) {
+            return "ещё не проверялось";
+        }
+        return "проверено " + new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                .format(new java.util.Date(updated));
+    }
+
+    /**
+     * vivo/OriginOS убивает процесс приложения и не переподключает слушатель
+     * уведомлений сам. Раз в 5 минут система будит приложение — процесс
+     * стартует, слушатель подключается, значки обновляются.
+     */
+    static void scheduleKeepAlive(Context context) {
+        Context app = context.getApplicationContext();
+        AlarmManager alarms = (AlarmManager) app.getSystemService(Context.ALARM_SERVICE);
+        if (alarms == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (prefs(app).getLong("keepAlive", 0L) > now) {
+            return; // пробуждение уже запланировано
+        }
+
+        Intent wake = new Intent("local.badgebridge.action.KEEP_ALIVE")
+                .setComponent(new ComponentName(app, Boot.class));
+        PendingIntent alarm = PendingIntent.getBroadcast(app, 91, wake,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        long interval = 5 * 60_000L;
+        try {
+            alarms.set(AlarmManager.RTC_WAKEUP, now + interval, alarm);
+        } catch (Exception e) {
+            // система ограничивает частоту — планируем реже
+            try {
+                alarms.set(AlarmManager.RTC_WAKEUP, now + 15 * 60_000L, alarm);
+            } catch (Exception ignored) {
+            }
+        }
+        prefs(app).edit().putLong("keepAlive", now + interval).apply();
     }
 
     /** Тестовая точка: горит 10 секунд после «Проверить значок». */

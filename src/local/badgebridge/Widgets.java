@@ -23,6 +23,7 @@ public class Widgets extends AppWidgetProvider {
                 Store.updateWidget(context, id);
             }
         }
+        Store.scheduleKeepAlive(context);
         Store.refresh(context);
     }
 

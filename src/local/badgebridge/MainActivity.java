@@ -82,6 +82,10 @@ public class MainActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        Store.scheduleKeepAlive(this);
+        if (Store.hasAccess(this) && !Store.connected(this)) {
+            Listener.forceRebind(this);
+        }
         Store.refresh(this);
         render();
         handler.postDelayed(redraw, 2000L);
@@ -221,17 +225,22 @@ public class MainActivity extends Activity {
 
         LinearLayout status = card();
         boolean connected = Store.connected(this);
-        status.addView(text(connected ? "●  Уведомления подключены"
+        String checked = Store.checkedText(this);
+        status.addView(text((connected ? "●  Уведомления подключены"
                 : Store.hasAccess(this) ? "◌  Подключаем уведомления"
-                : "○  Нужен доступ к уведомлениям", 17, connected ? ACCENT : INK));
+                : "○  Нужен доступ к уведомлениям")
+                + (connected ? " · " + checked : ""), 17, connected ? ACCENT : INK));
         status.addView(text("Приложение проверяет только источник и наличие уведомлений. "
                 + "Тексты не сохраняются и никуда не отправляются. Разрешение Android открывает "
                 + "доступ ко всем уведомлениям — отслеживаются только выбранные ниже.", 13, MUTED));
         status.addView(button(connected ? "Настройки доступа" : "Разрешить доступ",
                 () -> startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))));
         if (Store.hasAccess(this) && !connected) {
+            status.addView(text("OriginOS отключил слушатель уведомлений: значки показывают "
+                    + "последний подсчёт, а не текущий. Каждые 5 минут приложение само "
+                    + "просыпается и подключается снова.", 13, MUTED));
             status.addView(button("Переподключить", () -> {
-                NotificationListenerService.requestRebind(new android.content.ComponentName(this, Listener.class));
+                Listener.forceRebind(this);
                 Store.refresh(this);
             }));
         }
