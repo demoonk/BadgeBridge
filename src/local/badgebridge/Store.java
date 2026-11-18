@@ -218,6 +218,22 @@ public final class Store {
         }
     }
 
+    /**
+     * Подпись под значком: название и число уведомлений. Длинное название
+     * укорачивается, чтобы число не обрезалось ячейкой виджета.
+     */
+    private static String caption(String label, int count) {
+        if (count <= 0) {
+            return label;
+        }
+        String suffix = " · " + (count > 99 ? "99+" : count);
+        int limit = 14;
+        if (label.length() + suffix.length() > limit) {
+            label = label.substring(0, Math.max(3, limit - suffix.length())) + "…";
+        }
+        return label + suffix;
+    }
+
     static void updateWidget(Context context, int widgetId) {
         String pkg = prefs(context).getString("widget:" + widgetId, "");
         boolean bound = targets(context).contains(pkg);
@@ -227,7 +243,7 @@ public final class Store {
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget);
         views.setImageViewBitmap(R.id.widget_icon, icon(context, pkg, count, flag));
-        views.setTextViewText(R.id.widget_label, count > 0 ? label + " · " + count : label);
+        views.setTextViewText(R.id.widget_label, caption(label, count));
 
         String description = label;
         if (count > 0) {
