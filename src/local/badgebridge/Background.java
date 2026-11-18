@@ -47,6 +47,10 @@ public final class Background {
             /* Пробуждение произошло или должно произойти в ближайшие минуту —
                ограничения нет. */
             editor.putLong("onTimeWake", now);
+            /* Ограничение снято — разрешим подсказку снова, если оно вернётся. */
+            if (prefs.getBoolean("bgGuideShown", false)) {
+                editor.putBoolean("bgGuideShown", false);
+            }
         }
         if (Listener.current == null) {
             editor.putInt("coldWakes", prefs.getInt("coldWakes", 0) + 1);
