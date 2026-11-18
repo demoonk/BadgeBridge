@@ -12,6 +12,9 @@ public class Boot extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        /* Замер: насколько система задержала плановое пробуждение и был ли
+           процесс запущен заново (слушатель уведомлений тогда потерян). */
+        Background.measureWake(context);
         Store.scheduleKeepAlive(context);
         Store.widgets(context);
         if (Store.hasAccess(context) && !Store.connected(context)) {

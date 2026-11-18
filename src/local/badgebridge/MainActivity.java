@@ -3,6 +3,7 @@ package local.badgebridge;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -82,14 +83,34 @@ public class MainActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        /* Замер при открытии: если приложение было остановлено системой,
+           плановое пробуждение давно прошло, и задержка видна сразу. */
+        Background.measureWake(this);
         Store.scheduleKeepAlive(this);
         if (Store.hasAccess(this) && !Store.connected(this)) {
             Listener.forceRebind(this);
         }
         Store.refresh(this);
+        openBackgroundSettingsOnce();
         render();
         handler.postDelayed(redraw, 2000L);
         checkUpdates();
+    }
+
+    /**
+     * Если система явно останавливает приложение (пробуждение с задержкой,
+     * процесс запускается заново) — один раз открываем страницу настроек,
+     * где можно разрешить фоновую работу.
+     */
+    private void openBackgroundSettingsOnce() {
+        SharedPreferences prefs = Store.prefs(this);
+        if (!Background.restricted(this) || prefs.getBoolean("bgGuideShown", false)) {
+            return;
+        }
+        prefs.edit().putBoolean("bgGuideShown", true).apply();
+        if (!Background.openAppSettings(this)) {
+            Background.openBatterySettings(this);
+        }
     }
 
     @Override
@@ -194,6 +215,71 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Карточка фоновой работы: показывает, разрешена ли приложению фоновая
+     * работа, и ведёт на страницу настроек, где ограничение снимается.
+     */
+    private void renderBackgroundCard() {
+        String status = Background.status(this);
+        boolean restricted = status.equals("restricted");
+        boolean check = status.equals("check");
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(restricted ? Color.rgb(41, 31, 27) : CARD);
+        background.setCornerRadius(dp(20));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(18), dp(14), dp(18), dp(14));
+        card.setBackground(background);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(16);
+        root.addView(card, params);
+
+        String delay = Background.delayText(this);
+        String title = restricted ? "Фоновая работа ограничена"
+                : check ? "Проверьте фоновую работу"
+                : "Фоновая работа разрешена";
+        card.addView(text(title, 17, restricted ? Color.rgb(255, 184, 150) : INK));
+
+        if (restricted) {
+            card.addView(text("OriginOS периодически останавливает приложение и "
+                    + "отключает слушатель уведомлений — значки тогда показывают "
+                    + "последний подсчёт."
+                    + (delay.isEmpty() ? "" : " Пробуждение пришло с задержкой " + delay + "."),
+                    13, MUTED));
+        } else if (check) {
+            card.addView(text("В системе включена экономия энергии, а надёжного замера "
+                    + "пробуждения ещё не было. Проверьте, что для BadgeBridge разрешена "
+                    + "фоновая работа.", 13, MUTED));
+        } else {
+            card.addView(text("Плановые пробуждения приходят вовремя, слушатель "
+                    + "уведомлений не теряется.", 13, MUTED));
+        }
+
+        card.addView(text("Отключите «Приостанавливать работу приложения, если оно не "
+                + "используется» для BadgeBridge, а в «Батарея → Фоновое управление "
+                + "питанием» выберите «Разрешить энергопотребление в фоновом режиме».",
+                13, MUTED));
+        card.addView(button("Открыть настройки", () -> {
+            if (!Background.openAppSettings(this)) {
+                if (!Background.openBatterySettings(this)) {
+                    Background.requestIgnoreOptimization(this);
+                }
+            }
+        }));
+
+        TextView battery = text("Батарея → Фоновое управление питанием", 13, ACCENT);
+        battery.setPadding(dp(4), dp(10), dp(10), dp(10));
+        battery.setOnClickListener(v -> {
+            if (!Background.openBatterySettings(this)) {
+                Toast.makeText(this, "Страница «Батарея» не открылась", Toast.LENGTH_SHORT).show();
+            }
+        });
+        card.addView(battery);
+    }
+
     private void render() {
         int scrollY = page == null ? 0 : page.getScrollY();
         ScrollView scroll = new ScrollView(this);
@@ -244,6 +330,8 @@ public class MainActivity extends Activity {
                 Store.refresh(this);
             }));
         }
+
+        renderBackgroundCard();
 
         TextView heading = text("Мои приложения", 20, INK);
         heading.setTypeface(null, android.graphics.Typeface.BOLD);
